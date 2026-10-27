@@ -128,21 +128,23 @@ jobs:
 
           PUB_CACHE="${PUB_CACHE:-$HOME/.pub-cache}"
 
-          PLUGIN="$(find "$PUB_CACHE" \
-            \( \
-              -path '*/nfc_manager-*/android/build.gradle' \
-              -o \
-              -path '*/nfc_manager-*/android/build.gradle.kts' \
-            \) \
+          PLUGIN="$(find "$PUB_CACHE/hosted/pub.dev" \
+            -maxdepth 3 \
+            -type f \
+            \( -path '*/nfc_manager-*/android/build.gradle' \
+            -o -path '*/nfc_manager-*/android/build.gradle.kts' \) \
+            ! -path '*/example/*' \
             -print -quit)"
 
           if [ -z "$PLUGIN" ]; then
-            echo "ERRO: não encontrei o Gradle do nfc_manager."
-            find "$PUB_CACHE" -iname '*nfc_manager*' | head -n 30
+            echo "Não encontrei o Gradle principal do nfc_manager."
+            find "$PUB_CACHE/hosted/pub.dev" \
+              -maxdepth 5 -path '*/nfc_manager-*/*' -type f \
+              | head -n 60
             exit 1
           fi
 
-          echo "Arquivo do plugin: $PLUGIN"
+          echo "Arquivo principal do plugin: $PLUGIN"
 
           python3 - "$PLUGIN" <<'PY'
           from pathlib import Path
@@ -153,33 +155,27 @@ jobs:
           content = path.read_text(encoding="utf-8")
 
           patterns = [
-              r'(?m)^(\s*compileSdkVersion\s+).+$',
-              r'(?m)^(\s*compileSdk\s*=\s*).+$',
-              r'(?m)^(\s*compileSdk\s+).+$',
+              r'(?m)^(\s*compileSdkVersion\s+)\d+',
+              r'(?m)^(\s*compileSdk\s*=\s*)\d+',
+              r'(?m)^(\s*compileSdk\s+)\d+',
           ]
 
           for pattern in patterns:
               content, count = re.subn(
-                  pattern,
-                  r'\g<1>35',
-                  content,
-                  count=1
+                  pattern, r'\g<1>35', content, count=1
               )
               if count:
                   break
 
           if not count:
-              raise SystemExit(
-                  "Não consegui ajustar compileSdk do nfc_manager. "
-                  "Conteúdo do arquivo:\n" + content
-              )
+              print("O arquivo não declara compileSdk diretamente.")
+              print(content)
+              raise SystemExit(1)
 
           path.write_text(content, encoding="utf-8")
-
-          print("compileSdk do nfc_manager ajustado para 35.")
-          print(path.read_text(encoding="utf-8"))
+          print("compileSdk do plugin configurado para 35.")
           PY
-
+          
       - name: Compilar APK
         shell: bash
         env:
