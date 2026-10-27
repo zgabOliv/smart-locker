@@ -40,6 +40,7 @@ jobs:
         with:
           channel: stable
 
+
       - name: Preparar projeto Android
         shell: bash
         run: |
@@ -56,31 +57,36 @@ jobs:
           import re
 
           gradle = Path("android/app/build.gradle.kts")
-          if not gradle.exists():
-              raise SystemExit(f"Arquivo não encontrado: {gradle}")
-
           content = gradle.read_text(encoding="utf-8")
 
-          if re.search(r'compileSdk\s*=\s*\d+', content):
-              content = re.sub(
-                  r'compileSdk\s*=\s*\d+',
-                  'compileSdk = 35',
+          # Compatível com compileSdk = flutter.compileSdkVersion
+          # e compileSdk = 31, entre outros formatos.
+          pattern = r'(?m)^(\s*compileSdk\s*=\s*).+$'
+
+          content, count = re.subn(
+              pattern,
+              r'\g<1>35',
+              content,
+              count=1
+          )
+
+          if count == 0:
+              pattern = r'(?m)^(\s*compileSdk\s+).+$'
+              content, count = re.subn(
+                  pattern,
+                  r'\g<1>35',
                   content,
                   count=1
               )
-          elif re.search(r'compileSdk\s+\d+', content):
-              content = re.sub(
-                  r'compileSdk\s+\d+',
-                  'compileSdk 35',
-                  content,
-                  count=1
-              )
-          else:
+
+          if count == 0:
               raise SystemExit(
-                  "Não foi possível localizar compileSdk em android/app/build.gradle.kts"
+                  "Não encontrei compileSdk. Conteúdo do Gradle:\n"
+                  + content
               )
 
           gradle.write_text(content, encoding="utf-8")
+          print("compileSdk configurado para 35.")
 
           manifest = Path("android/app/src/main/AndroidManifest.xml")
           content = manifest.read_text(encoding="utf-8")
@@ -109,15 +115,10 @@ jobs:
               )
 
           manifest.write_text(content, encoding="utf-8")
-
-          print("compileSdk atualizado:")
-          for line in content.splitlines():
-              if "usesCleartextTraffic" in line:
-                  print(line)
-          print(gradle.read_text(encoding="utf-8"))
           PY
 
           flutter pub get
+
 
       - name: Compilar APK
         shell: bash
