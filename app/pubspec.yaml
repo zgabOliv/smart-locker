@@ -1,0 +1,14 @@
+name: smart_locker_ifsp
+description: App mobile do Smart Locker IFSP
+publish_to: none
+version: 1.0.0+1
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.2
+  flutter_secure_storage: ^9.2.2
+  nfc_manager: 3.5.1
+flutter:
+  uses-material-design: true
