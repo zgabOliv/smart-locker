@@ -237,6 +237,10 @@ app.MapGet("/acessos", async () =>
     return Results.Ok(await c.QueryAsync<Acesso>("SELECT TOP 300 Id, CONVERT(varchar(23), DataHora, 126) + 'Z' AS DataHora, Armario, Prontuario, Acao, StatusPorta, Operador FROM Acessos ORDER BY Id DESC"));
 }).RequireAuthorization(p => p.RequireRole("admin"));
 
+Console.WriteLine(
+    "HASH ADMIN: " +
+    BCrypt.Net.BCrypt.HashPassword("123456")
+);
 app.Run();
 
 record LoginReq(string Prontuario, string Senha);
