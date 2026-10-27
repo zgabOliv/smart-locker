@@ -1,133 +1,35 @@
 
-name: Gerar APK
+name: Diagnosticar GitHub
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'app/**'
-      - 'android_fix/**'
-      - '.github/workflows/gerar-apk.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  apk:
+  diagnostico:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Baixar código
+      - name: Baixar repositório
         uses: actions/checkout@v4
 
-      - name: Diagnosticar estrutura
+      - name: Verificar arquivos
         shell: bash
         run: |
-          echo "Raiz do repositório:"
+          echo "Raiz do checkout:"
           pwd
-          ls -la
+          ls -la "$GITHUB_WORKSPACE"
 
-          echo "Verificando app:"
-          if [ ! -d "./app" ]; then
-            echo "ERRO: pasta app não encontrada na raiz."
-            find . -maxdepth 4 -type f -name "pubspec.yaml" -print
-            exit 1
+          echo "Pasta app:"
+          if [ -d "$GITHUB_WORKSPACE/app" ]; then
+            echo "PASTA APP ENCONTRADA"
+            ls -la "$GITHUB_WORKSPACE/app"
+          else
+            echo "PASTA APP AUSENTE"
           fi
 
-          ls -la ./app
-
-          if [ ! -f "./app/pubspec.yaml" ]; then
-            echo "ERRO: app/pubspec.yaml não encontrado."
-            find . -maxdepth 5 -type f -name "pubspec.yaml" -print
-            exit 1
-          fi
-
-          if [ ! -f "./android_fix/build.gradle.kts" ]; then
-            echo "ERRO: android_fix/build.gradle.kts não encontrado."
-            exit 1
-          fi
-
-      - name: Conferir endereço da API
-        env:
-          API_URL: ${{ vars.API_URL }}
-        run: |
-          if [ -z "$API_URL" ]; then
-            echo "ERRO: configure API_URL em Settings > Secrets and variables > Actions > Variables."
-            exit 1
-          fi
-
-      - name: Configurar Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Configurar Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-
-      - name: Preparar projeto Android
-        shell: bash
-        run: |
-          set -e
-          cd "$GITHUB_WORKSPACE/app"
-
-          flutter create . \
-            --org br.edu.ifsp \
-            --project-name smart_locker_ifsp \
-            --platforms=android
-
-          cp "$GITHUB_WORKSPACE/android_fix/build.gradle.kts" \
-             android/build.gradle.kts
-
-          python3 - <<'PY'
-          from pathlib import Path
-
-          manifest = Path("android/app/src/main/AndroidManifest.xml")
-          content = manifest.read_text(encoding="utf-8")
-
-          if "android.permission.INTERNET" not in content:
-              content = content.replace(
-                  "<application",
-                  '<uses-permission android:name="android.permission.INTERNET"/>'
-                  '<uses-permission android:name="android.permission.NFC"/>'
-                  '<uses-feature android:name="android.hardware.nfc" android:required="false"/>'
-                  '<application android:usesCleartextTraffic="true"',
-                  1,
-              )
-          elif "android:usesCleartextTraffic" not in content:
-              content = content.replace(
-                  "<application",
-                  '<application android:usesCleartextTraffic="true"',
-                  1,
-              )
-
-          manifest.write_text(content, encoding="utf-8")
-          PY
-
-          flutter pub get
-
-      - name: Compilar APK
-        shell: bash
-        env:
-          API_URL: ${{ vars.API_URL }}
-        run: |
-          cd "$GITHUB_WORKSPACE/app"
-          flutter build apk --release \
-            --dart-define=API_URL="$API_URL"
-
-      - name: Verificar APK
-        run: |
-          test -f app/build/app/outputs/flutter-apk/app-release.apk
-          ls -lh app/build/app/outputs/flutter-apk/app-release.apk
-
-      - name: Disponibilizar APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: smart-locker-apk
-          path: app/build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: error
-          retention-days: 14
+          echo "Arquivos pubspec.yaml:"
+          find "$GITHUB_WORKSPACE" -name pubspec.yaml -print
 ```
