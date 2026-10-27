@@ -1,10 +1,9 @@
-```yaml
+
 name: Gerar APK
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - 'app/**'
       - 'android_fix/**'
@@ -22,52 +21,44 @@ jobs:
       - name: Baixar código
         uses: actions/checkout@v4
 
-      - name: Diagnosticar estrutura do repositório
+      - name: Diagnosticar estrutura
         shell: bash
         run: |
-          echo "Diretório atual:"
+          echo "Raiz do repositório:"
           pwd
-
-          echo "Conteúdo da raiz:"
           ls -la
 
-          echo "Conteúdo da pasta app:"
-          if [ -d app ]; then
-            ls -la app
-          else
-            echo "ERRO: pasta app não encontrada"
+          echo "Verificando app:"
+          if [ ! -d "./app" ]; then
+            echo "ERRO: pasta app não encontrada na raiz."
+            find . -maxdepth 4 -type f -name "pubspec.yaml" -print
             exit 1
           fi
 
-          echo "Localizando arquivos importantes:"
-          find . -maxdepth 5 \
-            \( -name "pubspec.yaml" -o -name "*.csproj" -o -name "build.gradle.kts" \) \
-            -print
+          ls -la ./app
 
-          if [ ! -f app/pubspec.yaml ]; then
-            echo "ERRO: app/pubspec.yaml não encontrado"
+          if [ ! -f "./app/pubspec.yaml" ]; then
+            echo "ERRO: app/pubspec.yaml não encontrado."
+            find . -maxdepth 5 -type f -name "pubspec.yaml" -print
             exit 1
           fi
 
-          if [ ! -f android_fix/build.gradle.kts ]; then
-            echo "ERRO: android_fix/build.gradle.kts não encontrado"
+          if [ ! -f "./android_fix/build.gradle.kts" ]; then
+            echo "ERRO: android_fix/build.gradle.kts não encontrado."
             exit 1
           fi
 
       - name: Conferir endereço da API
         env:
           API_URL: ${{ vars.API_URL }}
-        shell: bash
         run: |
           if [ -z "$API_URL" ]; then
-            echo "ERRO: configure API_URL em Settings > Secrets and variables > Actions > Variables"
+            echo "ERRO: configure API_URL em Settings > Secrets and variables > Actions > Variables."
             exit 1
           fi
 
-          echo "Endereço da API configurado."
-
       - name: Configurar Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
@@ -79,18 +70,17 @@ jobs:
 
       - name: Preparar projeto Android
         shell: bash
-        working-directory: app
         run: |
           set -e
-
-          flutter --version
+          cd "$GITHUB_WORKSPACE/app"
 
           flutter create . \
             --org br.edu.ifsp \
             --project-name smart_locker_ifsp \
             --platforms=android
 
-          cp ../android_fix/build.gradle.kts android/build.gradle.kts
+          cp "$GITHUB_WORKSPACE/android_fix/build.gradle.kts" \
+             android/build.gradle.kts
 
           python3 - <<'PY'
           from pathlib import Path
@@ -120,14 +110,15 @@ jobs:
           flutter pub get
 
       - name: Compilar APK
-        working-directory: app
+        shell: bash
         env:
           API_URL: ${{ vars.API_URL }}
         run: |
-          flutter build apk --release --dart-define=API_URL="$API_URL"
+          cd "$GITHUB_WORKSPACE/app"
+          flutter build apk --release \
+            --dart-define=API_URL="$API_URL"
 
       - name: Verificar APK
-        shell: bash
         run: |
           test -f app/build/app/outputs/flutter-apk/app-release.apk
           ls -lh app/build/app/outputs/flutter-apk/app-release.apk
