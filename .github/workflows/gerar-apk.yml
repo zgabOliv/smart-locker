@@ -1,0 +1,35 @@
+name: Gerar APK
+on:
+  push:
+    branches: [main]
+    paths: ['app/**', 'android_fix/**']
+  workflow_dispatch:
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Conferir endereço da API
+        run: |
+          if [ -z "${{ vars.API_URL }}" ]; then echo "Defina a variável API_URL (Settings > Secrets and variables > Actions > Variables)"; exit 1; fi
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Preparar projeto Android
+        working-directory: app
+        run: |
+          flutter create . --org br.edu.ifsp --project-name smart_locker_ifsp --platforms=android
+          cp ../android_fix/build.gradle.kts android/build.gradle.kts
+          sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/><uses-permission android:name="android.permission.NFC"/><uses-feature android:name="android.hardware.nfc" android:required="false"/><application android:usesCleartextTraffic="true"#' android/app/src/main/AndroidManifest.xml
+          flutter pub get
+      - name: Compilar APK
+        working-directory: app
+        run: flutter build apk --release --dart-define=API_URL=${{ vars.API_URL }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smart-locker-apk
+          path: app/build/app/outputs/flutter-apk/app-release.apk
