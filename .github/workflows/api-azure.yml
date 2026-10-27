@@ -70,6 +70,7 @@ jobs:
             exit 1
           fi
 
+    
       - name: Publicar no Azure App Service
         uses: azure/webapps-deploy@v3
         with:
