@@ -36,4 +36,3 @@ jobs:
           find "$GITHUB_WORKSPACE" -maxdepth 5 \
             \( -name pubspec.yaml -o -name AndroidManifest.xml \) \
             -print
-```
