@@ -48,7 +48,7 @@ jobs:
       - name: Validar configurações do Azure
         shell: bash
         env:
-          AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+          AZURE_WEBAPP_NAME: ${{ vars.AZURE_APP_NAME }}
           AZURE_PUBLISH_PROFILE: ${{ secrets.AZURE_PUBLISH_PROFILE }}
         run: |
           set -euo pipefail
