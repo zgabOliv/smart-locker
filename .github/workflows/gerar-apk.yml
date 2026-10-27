@@ -1,4 +1,3 @@
-
 name: Diagnosticar GitHub
 
 on:
@@ -18,11 +17,11 @@ jobs:
       - name: Verificar arquivos
         shell: bash
         run: |
-          echo "Raiz do checkout:"
+          echo "===== RAIZ DO REPOSITÓRIO ====="
           pwd
           ls -la "$GITHUB_WORKSPACE"
 
-          echo "Pasta app:"
+          echo "===== VERIFICAR PASTA APP ====="
           if [ -d "$GITHUB_WORKSPACE/app" ]; then
             echo "PASTA APP ENCONTRADA"
             ls -la "$GITHUB_WORKSPACE/app"
@@ -30,6 +29,11 @@ jobs:
             echo "PASTA APP AUSENTE"
           fi
 
-          echo "Arquivos pubspec.yaml:"
+          echo "===== LOCALIZAR PUBSPEC.YAML ====="
           find "$GITHUB_WORKSPACE" -name pubspec.yaml -print
+
+          echo "===== LOCALIZAR PROJETOS FLUTTER ====="
+          find "$GITHUB_WORKSPACE" -maxdepth 5 \
+            \( -name pubspec.yaml -o -name AndroidManifest.xml \) \
+            -print
 ```
