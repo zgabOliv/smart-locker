@@ -65,11 +65,12 @@ using (var c = Db())
 {
     c.Execute("IF COL_LENGTH('Usuarios','SenhaHash') IS NULL ALTER TABLE Usuarios ADD SenhaHash NVARCHAR(100) NULL");
     c.Execute("IF COL_LENGTH('Usuarios','Perfil') IS NULL ALTER TABLE Usuarios ADD Perfil NVARCHAR(10) NOT NULL DEFAULT 'aluno'");
-    c.Execute(@"IF OBJECT_ID('Acessos') IS NULL
+      c.Execute(@"IF OBJECT_ID('Acessos') IS NULL
                 CREATE TABLE Acessos (Id INT IDENTITY PRIMARY KEY, DataHora DATETIME NOT NULL DEFAULT GETUTCDATE(),
                     Armario NVARCHAR(50) NULL, Prontuario NVARCHAR(50) NULL, Acao NVARCHAR(60) NOT NULL,
                     StatusPorta NVARCHAR(30) NULL, Operador NVARCHAR(50) NULL)");
 }
+
 // Redefine temporariamente a senha do admin
 using (var c = Db())
 {
@@ -80,21 +81,16 @@ using (var c = Db())
 
     if (existe > 0)
     {
-        c.Execute(@"
-            UPDATE Usuarios
-            SET SenhaHash = @h,
-                Status = 'Ativo',
-                Perfil = 'admin'
-            WHERE Prontuario = 'admin'",
+        c.Execute(@"UPDATE Usuarios
+                    SET SenhaHash = @h, Status = 'Ativo', Perfil = 'admin'
+                    WHERE Prontuario = 'admin'",
             new { h = hash });
     }
     else
     {
-        c.Execute(@"
-            INSERT INTO Usuarios
-                (Prontuario, Nome, Curso, ArmarioId, Status, Perfil, SenhaHash)
-            VALUES
-                ('admin', 'Administrador', '', NULL, 'Ativo', 'admin', @h)",
+        c.Execute(@"INSERT INTO Usuarios
+                    (Prontuario, Nome, Curso, ArmarioId, Status, Perfil, SenhaHash)
+                    VALUES ('admin', 'Administrador', '', NULL, 'Ativo', 'admin', @h)",
             new { h = hash });
     }
 }
