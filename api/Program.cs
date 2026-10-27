@@ -69,17 +69,34 @@ using (var c = Db())
                 CREATE TABLE Acessos (Id INT IDENTITY PRIMARY KEY, DataHora DATETIME NOT NULL DEFAULT GETUTCDATE(),
                     Armario NVARCHAR(50) NULL, Prontuario NVARCHAR(50) NULL, Acao NVARCHAR(60) NOT NULL,
                     StatusPorta NVARCHAR(30) NULL, Operador NVARCHAR(50) NULL)");
-}
-
-// Cria o admin inicial se ainda não existir
+// Redefine temporariamente a senha do admin
 using (var c = Db())
 {
-    if (c.ExecuteScalar<int>("SELECT COUNT(*) FROM Usuarios WHERE Perfil='admin'") == 0)
-        c.Execute(@"INSERT INTO Usuarios (Prontuario, Nome, Curso, ArmarioId, Status, Perfil, SenhaHash)
-                    VALUES ('admin','Administrador','',NULL,'Ativo','admin',@h)",
-                  new { h = BCrypt.Net.BCrypt.HashPassword(b.Configuration["AdminSenhaInicial"]) });
-}
+    var hash = BCrypt.Net.BCrypt.HashPassword("123456");
 
+    var existe = c.ExecuteScalar<int>(
+        "SELECT COUNT(*) FROM Usuarios WHERE Prontuario = 'admin'");
+
+    if (existe > 0)
+    {
+        c.Execute(@"
+            UPDATE Usuarios
+            SET SenhaHash = @h,
+                Status = 'Ativo',
+                Perfil = 'admin'
+            WHERE Prontuario = 'admin'",
+            new { h = hash });
+    }
+    else
+    {
+        c.Execute(@"
+            INSERT INTO Usuarios
+                (Prontuario, Nome, Curso, ArmarioId, Status, Perfil, SenhaHash)
+            VALUES
+                ('admin', 'Administrador', '', NULL, 'Ativo', 'admin', @h)",
+            new { h = hash });
+    }
+}
 
 // Usuário de demonstração: SP3000001 / demo123, dono do armário "armario_demo".
 // A cada início da API ele é criado ou corrigido (senha, status e vínculo com o armário).
