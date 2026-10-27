@@ -1,0 +1,45 @@
+SMART LOCKER IFSP — PROJETO COMPLETO (API C# + app Flutter)
+
+  celular / PC (Flutter)  <->  API ASP.NET Core  <->  SQL Server (banco TCC)
+
+LOGINS
+  admin      | senha do appsettings.json (padrão: TroqueEstaSenha123)
+  SP3000001  | demo123   (aluno de demonstração, dono do armário "armario_demo")
+
+PASSO A PASSO
+1) API
+   - Confira api\appsettings.json (connection string, Jwt:Key, AdminSenhaInicial).
+   - Dê dois cliques em rodar_api.bat (ou: cd api  &&  dotnet run). Deixe a janela aberta.
+   - A API cria sozinha colunas, tabela Acessos, admin e o usuário demo. Procure no terminal:
+       "Usuário demo pronto: SP3000001 / demo123"
+   - Libere a porta 5000 no firewall do Windows (celular na mesma rede Wi-Fi).
+
+2) APP (uma vez)
+   - Dê dois cliques em preparar_app.bat. Ele roda flutter create, aplica a correção do Gradle
+     e coloca as permissões de internet/NFC no AndroidManifest.
+
+3) RODAR
+   - Emulador Android:   cd app  &&  flutter run
+   - Celular (USB):      flutter run --dart-define=API_URL=http://IP_DO_PC:5000
+   - Windows (admin):    flutter run -d windows   (precisa do Visual Studio com C++)
+   - Gerar APK:          flutter build apk --release --dart-define=API_URL=http://IP_DO_PC:5000
+                         (sai em app\build\app\outputs\flutter-apk\app-release.apk)
+
+NFC
+   - Grave numa etiqueta NTAG213/215/216 (app "NFC Tools") um registro de TEXTO: armario_demo
+   - Entre como SP3000001, aproxime o celular da etiqueta. O admin vê o armário abrir.
+   - Sem NFC (emulador), aparece o botão "Simular aproximação".
+
+SE O LOGIN FALHAR
+   - A mensagem do app agora diz se é senha errada ou se a API não foi alcançada.
+   - Teste a API:  Invoke-RestMethod -Method Post http://localhost:5000/login -ContentType 'application/json' -Body '{"prontuario":"SP3000001","senha":"demo123"}'
+
+OUTRO COMPUTADOR / ERRO 4060 ("Não é possível abrir o banco de dados TCC")
+   A API agora cria o banco e as tabelas Armarios e Usuarios sozinha se não existirem.
+   Se aparecer "ATENÇÃO: não consegui criar/verificar o banco", seu usuário do Windows não tem
+   permissão no SQL Server. No SSMS (ou sqlcmd -S localhost\SQLEXPRESS -E) rode como administrador:
+     CREATE LOGIN [PC\gabri] FROM WINDOWS;   -- ignore o erro se já existir
+     ALTER SERVER ROLE sysadmin ADD MEMBER [PC\gabri];
+   (troque PC\gabri pelo seu usuário, que aparece na mensagem de erro)
+
+MODO NUVEM (sem depender do seu PC): leia GUIA_NUVEM.md
