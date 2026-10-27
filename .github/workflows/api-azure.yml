@@ -1,4 +1,4 @@
-
+```yaml
 name: Publicar API no Azure
 
 on:
@@ -45,6 +45,24 @@ jobs:
           echo "Projeto selecionado: $PROJECT"
           echo "project=$PROJECT" >> "$GITHUB_OUTPUT"
 
+      - name: Validar configurações do Azure
+        shell: bash
+        env:
+          AZURE_WEBAPP_NAME: ${{ vars.AZURE_WEBAPP_NAME }}
+          AZURE_PUBLISH_PROFILE: ${{ secrets.AZURE_PUBLISH_PROFILE }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$AZURE_WEBAPP_NAME" ]; then
+            echo "ERRO: configure AZURE_WEBAPP_NAME em Settings > Secrets and variables > Actions > Variables."
+            exit 1
+          fi
+
+          if [ -z "$AZURE_PUBLISH_PROFILE" ]; then
+            echo "ERRO: configure AZURE_PUBLISH_PROFILE em Settings > Secrets and variables > Actions > Secrets."
+            exit 1
+          fi
+
       - name: Restaurar dependências
         run: dotnet restore "${{ steps.localizar.outputs.project }}"
 
@@ -57,9 +75,9 @@ jobs:
       - name: Verificar publicação
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
           test -f "${{ runner.temp }}/publish/SmartLockerApi.dll" || {
-            echo "Confira o nome da DLL gerada na pasta de publicação."
+            echo "ERRO: SmartLockerApi.dll não foi encontrada."
             ls -la "${{ runner.temp }}/publish"
             exit 1
           }
@@ -70,4 +88,4 @@ jobs:
           app-name: ${{ vars.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
           package: ${{ runner.temp }}/publish
-
+```
