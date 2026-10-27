@@ -69,6 +69,7 @@ using (var c = Db())
                 CREATE TABLE Acessos (Id INT IDENTITY PRIMARY KEY, DataHora DATETIME NOT NULL DEFAULT GETUTCDATE(),
                     Armario NVARCHAR(50) NULL, Prontuario NVARCHAR(50) NULL, Acao NVARCHAR(60) NOT NULL,
                     StatusPorta NVARCHAR(30) NULL, Operador NVARCHAR(50) NULL)");
+}
 // Redefine temporariamente a senha do admin
 using (var c = Db())
 {
