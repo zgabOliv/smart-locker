@@ -3,8 +3,7 @@ name: Gerar APK
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - 'app/**'
       - '.github/workflows/gerar-apk.yml'
@@ -21,28 +20,7 @@ jobs:
       - name: Baixar código
         uses: actions/checkout@v4
 
-      - name: Diagnosticar estrutura
-        shell: bash
-        run: |
-          set -e
-
-          echo "Raiz do repositório:"
-          pwd
-          ls -la "$GITHUB_WORKSPACE"
-
-          echo "Verificando projeto Flutter:"
-          if [ ! -f "$GITHUB_WORKSPACE/app/pubspec.yaml" ]; then
-            echo "ERRO: app/pubspec.yaml não encontrado"
-            find "$GITHUB_WORKSPACE" -maxdepth 5 \
-              -name pubspec.yaml -print
-            exit 1
-          fi
-
-          echo "Projeto Flutter encontrado."
-          cat "$GITHUB_WORKSPACE/app/pubspec.yaml"
-
       - name: Conferir endereço da API
-        shell: bash
         env:
           API_URL: ${{ vars.API_URL }}
         run: |
@@ -50,8 +28,6 @@ jobs:
             echo "ERRO: configure API_URL em Settings > Secrets and variables > Actions > Variables."
             exit 1
           fi
-
-          echo "API_URL configurada."
 
       - name: Configurar Java
         uses: actions/setup-java@v5
@@ -70,8 +46,6 @@ jobs:
           set -e
           cd "$GITHUB_WORKSPACE/app"
 
-          flutter --version
-
           flutter create . \
             --org br.edu.ifsp \
             --project-name smart_locker_ifsp \
@@ -79,39 +53,68 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
-          manifest = Path(
-              "android/app/src/main/AndroidManifest.xml"
-          )
+          gradle = Path("android/app/build.gradle.kts")
+          if not gradle.exists():
+              raise SystemExit(f"Arquivo não encontrado: {gradle}")
 
+          content = gradle.read_text(encoding="utf-8")
+
+          if re.search(r'compileSdk\s*=\s*\d+', content):
+              content = re.sub(
+                  r'compileSdk\s*=\s*\d+',
+                  'compileSdk = 35',
+                  content,
+                  count=1
+              )
+          elif re.search(r'compileSdk\s+\d+', content):
+              content = re.sub(
+                  r'compileSdk\s+\d+',
+                  'compileSdk 35',
+                  content,
+                  count=1
+              )
+          else:
+              raise SystemExit(
+                  "Não foi possível localizar compileSdk em android/app/build.gradle.kts"
+              )
+
+          gradle.write_text(content, encoding="utf-8")
+
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
           content = manifest.read_text(encoding="utf-8")
 
           if "android.permission.INTERNET" not in content:
               content = content.replace(
                   "<application",
                   '<uses-permission android:name="android.permission.INTERNET"/>'
-                  '<uses-permission android:name="android.permission.NFC"/>'
-                  '<uses-feature android:name="android.hardware.nfc" android:required="false"/>'
-                  '<application android:usesCleartextTraffic="true"',
-                  1,
+                  '<application',
+                  1
               )
-          else:
-              if "android.permission.NFC" not in content:
-                  content = content.replace(
-                      "<application",
-                      '<uses-permission android:name="android.permission.NFC"/>'
-                      '<application',
-                      1,
-                  )
 
-              if "android:usesCleartextTraffic" not in content:
-                  content = content.replace(
-                      "<application",
-                      '<application android:usesCleartextTraffic="true"',
-                      1,
-                  )
+          if "android.permission.NFC" not in content:
+              content = content.replace(
+                  "<application",
+                  '<uses-permission android:name="android.permission.NFC"/>'
+                  '<application',
+                  1
+              )
+
+          if "android:usesCleartextTraffic" not in content:
+              content = content.replace(
+                  "<application",
+                  '<application android:usesCleartextTraffic="true"',
+                  1
+              )
 
           manifest.write_text(content, encoding="utf-8")
+
+          print("compileSdk atualizado:")
+          for line in content.splitlines():
+              if "usesCleartextTraffic" in line:
+                  print(line)
+          print(gradle.read_text(encoding="utf-8"))
           PY
 
           flutter pub get
@@ -129,18 +132,9 @@ jobs:
             --dart-define=API_URL="$API_URL"
 
       - name: Verificar APK
-        shell: bash
         run: |
-          set -e
-
-          APK="app/build/app/outputs/flutter-apk/app-release.apk"
-
-          if [ ! -f "$APK" ]; then
-            echo "ERRO: APK não foi gerado."
-            exit 1
-          fi
-
-          ls -lh "$APK"
+          test -f app/build/app/outputs/flutter-apk/app-release.apk
+          ls -lh app/build/app/outputs/flutter-apk/app-release.apk
 
       - name: Disponibilizar APK
         uses: actions/upload-artifact@v4
@@ -148,4 +142,3 @@ jobs:
           name: smart-locker-apk
           path: app/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
-          retention-days: 14
